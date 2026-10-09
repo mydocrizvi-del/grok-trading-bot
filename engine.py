@@ -27,9 +27,10 @@ def validate_candles(df: pd.DataFrame) -> pd.DataFrame:
         bad_spread = out["spread"].isna() | ~np.isfinite(out["spread"]) | (out["spread"] < 0)
         if bad_spread.any():
             raise ValueError("Spread must be present, finite, and non-negative for every row; remove the column to use the configured assumption.")
-    else:
-        out["spread"] = np.nan
-
+    # Keep the column absent when the source has no spread; downstream code
+    # then uses the configured assumption. Do not synthesize NaNs here because
+    # indicators() validates the normalized frame again.
+    
     invalid = out[["timestamp", *PRICE_COLUMNS]].isna().any(axis=1)
     if invalid.any():
         raise ValueError(f"{int(invalid.sum())} row(s) contain invalid timestamps or OHLC values.")
@@ -155,7 +156,8 @@ def backtest(df: pd.DataFrame, s: Settings) -> tuple[pd.DataFrame, dict]:
         if position is None and not cutoff_hit:
             sig, atr = prev["signal"], prev["atr"]
             if sig in ("BUY", "SELL") and pd.notna(atr) and atr > 0:
-                spread = prev["spread"] if pd.notna(prev["spread"]) else s.assumed_spread_usd_per_oz
+                spread_value = prev.get("spread", np.nan)
+                spread = spread_value if pd.notna(spread_value) else s.assumed_spread_usd_per_oz
                 if np.isfinite(spread) and 0 <= spread <= s.max_spread_usd_per_oz:
                     entry = float(row["open"])
                     side = str(sig)
