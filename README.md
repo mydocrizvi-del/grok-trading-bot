@@ -1,43 +1,35 @@
 # XAU/USD AI Scalping Desk — paper-only MVP
 
-This is a local-first Python prototype for research and paper trading. It has **no broker integration and no live-order capability**.
+Local-first Python prototype for research and paper trading. It has **no broker integration and no live-order capability**.
 
 ## Features
 - M1 entries with M5 trend confirmation
-- Configurable paper balance ($10,000 default), 0.25% risk/trade, 1% daily loss cutoff
-- Spread and slippage cost assumptions
-- Stop/target simulation and SQLite paper ledger
-- Streamlit dashboard and CSV candle import
-- Historical backtest over imported OHLC data
+- Configurable paper balance, risk fraction and daily realized-loss cutoff
+- Spread/slippage assumptions, stop/target simulation and SQLite paper ledger
+- Streamlit dashboard, CSV candle import and historical backtests
 
-## Important limitations
-- Strategy is a baseline hypothesis, not a proven edge.
-- The CSV must contain timestamp, open, high, low, close; optional `spread` column is in **USD price units** (e.g. 0.25 means $0.25 per oz). Timestamps should be UTC or consistently timezone-aware.
-- For credible XAU/USD costs, replace assumed spread/slippage with broker-independent market data or clearly documented executable bid/ask data. Candle-only data cannot reconstruct true fills.
-- Contract size is configurable. Default 100 troy ounces per standard lot is a common CFD convention, **not universal**. This app simulates ounces directly and does not submit orders.
-- Historical data and simulated P&L are not evidence of future performance.
+## Historical data rules
+Upload M1 candles with `timestamp,open,high,low,close`. Optional `spread` is in USD price units (e.g. 0.25 means $0.25 per ounce). Timestamps are parsed as UTC and must be unique, increasing and valid. OHLC values must be finite, positive and internally consistent. If a spread column is provided, every spread must be finite and non-negative. Omit the column to use the configured spread assumption.
 
-## Run locally (free)
-```bash
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-source .venv/bin/activate
-pip install -r requirements.txt
-streamlit run app.py
+The app cannot certify data source, timezone convention, candle completeness or executable prices. Verify source metadata and inspect missing-minute gaps. OHLC cannot tell which level was hit first when stop and target are both touched in the same candle; this baseline assumes the stop was hit first.
+
+## Run locally on Windows
+```powershell
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
-## Input data
-Upload an M1 CSV with columns:
-`timestamp,open,high,low,close`
-Optional: `spread` (USD/oz). A sample synthetic CSV can be generated in the app for a UI smoke test; synthetic data is not market data and must not be used to judge profitability.
-
 ## Strategy v0.1
-- M5 trend: close above EMA(20) and EMA(20) rising => long bias; below and falling => short bias.
-- M1 entry: EMA(9)/EMA(21) crossover in the same direction.
+- M5 trend uses close relative to EMA(20) plus EMA slope.
+- M1 entry uses EMA(9)/EMA(21) crossover with matching trend.
 - Initial stop: 1.2 × ATR(14); target: 1.5R.
-- Skip when spread exceeds configured max; pause new entries after daily realized loss reaches 1%.
-- Simulated risk budget: 0.25% of starting paper balance per entry.
-- Signal uses completed bars only; execution is modeled on the next bar open to reduce look-ahead bias.
+- Skip excessive spreads and pause new entries once daily realized P&L breaches its cutoff relative to that UTC day's opening balance.
+- Positions are simulated in ounces, not actual broker lots. Costs are estimated, not guaranteed.
+- Entry is modelled on the next candle open. Positions remaining at the end of the dataset are closed at the last close for accounting.
 
-## Compliance note for Indian residents
-This tool only simulates prices. It does not connect to a broker or route orders. Before any real-money activity, verify the exact product and route against current RBI/FEMA rules and the RBI lists of authorised persons/ETPs; do not assume an offshore leveraged XAU/USD CFD is permitted. Seek qualified legal/compliance advice. This is not legal or financial advice.
+## Limitations
+This is a strategy hypothesis, not a proven edge or investment recommendation. Reliable research requires documented bid/ask data, cost sensitivity checks and out-of-sample validation. No broker connection or live order execution is implemented.
+
+## India compliance note
+Before any real-money XAU/USD activity, verify the exact product and route against current RBI/FEMA rules and relevant authorised-person/ETP lists. Do not assume an offshore leveraged XAU/USD CFD is permitted. Consider qualified legal/compliance advice. This is not legal or financial advice.
