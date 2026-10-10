@@ -11,7 +11,7 @@ Local-first Python prototype for research and paper trading. It has **no broker 
 ## Historical data rules
 Upload M1 candles with `timestamp,open,high,low,close`. Optional `spread` is in USD price units (e.g. 0.25 means $0.25 per ounce). Timestamps are parsed as UTC and must be unique, increasing and valid. OHLC values must be finite, positive and internally consistent. If a spread column is provided, every spread must be finite and non-negative. Omit the column to use the configured spread assumption.
 
-The app cannot certify data source, timezone convention, candle completeness or executable prices. Verify source metadata and inspect missing-minute gaps. OHLC cannot tell which level was hit first when stop and target are both touched in the same candle; this baseline assumes the stop was hit first.
+The engine assumes each M1 timestamp marks the candle OPEN time. M5 trend candles are built from left-closed, right-labelled five-minute buckets so the candle stamped 00:05 is not included in the M5 candle ending at 00:05. Verify this timestamp convention against the source metadata before trusting results. The app cannot certify data source, timezone convention, candle completeness or executable prices. Inspect missing-minute gaps. OHLC cannot tell which level was hit first when stop and target are both touched in the same candle; this baseline assumes the stop was hit first.
 
 ## Run locally on Windows
 ```powershell
