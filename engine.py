@@ -63,10 +63,14 @@ def indicators(df: pd.DataFrame, s: Settings) -> pd.DataFrame:
     ], axis=1).max(axis=1)
     x["atr"] = true_range.rolling(s.atr_period, min_periods=s.atr_period).mean()
 
-    # A completed M5 candle is right-labelled and becomes available at its end.
+    # Source timestamps are assumed to mark M1 candle OPEN times.
+    # A candle stamped 00:04 covers [00:04, 00:05), so the completed M5
+    # bucket ending at 00:05 must contain stamps 00:00 through 00:04 only.
+    # left-closed/right-labelled buckets prevent the 00:05 candle from
+    # leaking into the M5 trend available at 00:05.
     m5 = (
         x.set_index("timestamp")[PRICE_COLUMNS]
-        .resample("5min", label="right", closed="right")
+        .resample("5min", label="right", closed="left")
         .agg({"open": "first", "high": "max", "low": "min", "close": "last"})
         .dropna()
     )
