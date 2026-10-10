@@ -61,3 +61,20 @@ def test_backtest_metrics_reconcile():
 def test_empty_data_rejected():
     with pytest.raises(ValueError, match="no candle rows"):
         validate_candles(pd.DataFrame(columns=["timestamp", "open", "high", "low", "close"]))
+
+def test_m5_trend_does_not_use_current_open_time_candle():
+    df = candles(600)
+    baseline = indicators(df, Settings())
+
+    # Timestamp 05:05 marks the start of that M1 candle. Its OHLC must not
+    # affect the completed M5 trend already available at 05:05.
+    changed = df.copy()
+    idx = 305
+    changed.loc[idx, ["open", "high", "low", "close"]] = [
+        2400.0, 2400.2, 2399.8, 2400.0
+    ]
+    altered = indicators(changed, Settings())
+
+    assert baseline.loc[idx, "trend_up"] == altered.loc[idx, "trend_up"]
+    assert baseline.loc[idx, "trend_down"] == altered.loc[idx, "trend_down"]
+
